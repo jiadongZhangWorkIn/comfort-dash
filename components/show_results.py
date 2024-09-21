@@ -43,19 +43,34 @@ def display_results(inputs: dict):
         )
         results.append(dmc.Center(dmc.Text(f"PMV: {r_pmv['pmv']}")))
         results.append(dmc.Center(dmc.Text(f"PPD: {r_pmv['ppd']}")))
-        comfort_category = mapping(
-            r_pmv["pmv"],
-            {
-                -2.5: "Cold",
-                -1.5: "Cool",
-                -0.5: "Slightly Cool",
-                0.5: "Neutral",
-                1.5: "Slightly Warm",
-                2.5: "Warm",
-                10: "Hot",
-            },
-        )
-        results.append(dmc.Center(dmc.Text(f"Sensation: {comfort_category}")))
+        if selected_model == Models.PMV_ashrae.name:
+            comfort_category = mapping(
+                r_pmv["pmv"],
+                {
+                    -2.5: "Cold",
+                    -1.5: "Cool",
+                    -0.5: "Slightly Cool",
+                    0.5: "Neutral",
+                    1.5: "Slightly Warm",
+                    2.5: "Warm",
+                    10: "Hot",
+                },
+            )
+            results.append(dmc.Center(dmc.Text(f"Sensation: {comfort_category}")))
+        if selected_model == Models.PMV_EN.name:
+            comfort_category = mapping(
+                r_pmv["pmv"],
+                {
+                    -0.7: "Ⅳ",
+                    -0.5: "Ⅲ",
+                    -0.2: "Ⅱ",
+                    0.2: "Ⅰ",
+                    0.5: "Ⅱ",
+                    0.7: "Ⅲ",
+                    2: "Ⅳ",
+                },
+            )
+            results.append(dmc.Center(dmc.Text(f"Category: {comfort_category}")))
     elif selected_model == Models.Adaptive_ASHRAE.name:
         columns = 1
 
