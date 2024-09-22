@@ -130,7 +130,7 @@ def t_rh_pmv_category(inputs: dict = None, model: str = "iso"):
         "rgba(114,174,106,0.9)",  # Medium green
         "rgba(78,156,71,0.9)",  # Dark green
         "rgba(114,174,106,0.9)",  # Medium green
-        "rgba(168,204,162,0.9)",  # 浅绿色，透明度为 0.5
+        "rgba(168,204,162,0.9)",  # Light green
     ]
     clo_d = clo_dynamic(
         clo=inputs[ElementsIDs.clo_input.value], met=inputs[ElementsIDs.met_input.value]
