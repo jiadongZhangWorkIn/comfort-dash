@@ -413,7 +413,9 @@ def pmot_ot_adaptive_ashrae(inputs: dict = None, model: str = "ashrae"):
     )
 
     return dmc.Paper(children=[dcc.Graph(figure=fig)])
-def t_hr_pmv(inputs: dict = None, model: str = "iso"):
+
+
+def t_hr_pmv(inputs: dict = None, model: str = "ashrae"):
     results = []
     pmv_limits = [-0.5, 0.5]
     clo_d = clo_dynamic(
@@ -516,7 +518,9 @@ def t_hr_pmv(inputs: dict = None, model: str = "iso"):
         alt="Psychrometric chart",
         py=0,
     )
-def speed_temp_pmv(inputs: dict = None, model: str = "iso"):
+
+
+def speed_temp_pmv(inputs: dict = None, model: str = "ashrae"):
     results = []
     pmv_limits = [-0.5, 0.5]
     clo_d = clo_dynamic(
@@ -525,20 +529,21 @@ def speed_temp_pmv(inputs: dict = None, model: str = "iso"):
 
     for pmv_limit in pmv_limits:
         for vr in np.arange(0.1, 1.3, 0.1):
+
             def function(x):
                 return (
-                        pmv(
-                            x,
-                            tr=inputs[ElementsIDs.t_r_input.value],
-                            vr=vr,
-                            rh=inputs[ElementsIDs.rh_input.value],
-                            met=inputs[ElementsIDs.met_input.value],
-                            clo=clo_d,
-                            wme=0,
-                            standard=model,
-                            limit_inputs=False,
-                        )
-                        - pmv_limit
+                    pmv(
+                        x,
+                        tr=inputs[ElementsIDs.t_r_input.value],
+                        vr=vr,
+                        rh=inputs[ElementsIDs.rh_input.value],
+                        met=inputs[ElementsIDs.met_input.value],
+                        clo=clo_d,
+                        wme=0,
+                        standard=model,
+                        limit_inputs=False,
+                    )
+                    - pmv_limit
                 )
 
             temp = optimize.brentq(function, 10, 40)
@@ -549,4 +554,3 @@ def speed_temp_pmv(inputs: dict = None, model: str = "iso"):
                     "pmv_limit": pmv_limit,
                 }
             )
-
