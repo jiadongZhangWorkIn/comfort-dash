@@ -502,3 +502,39 @@ def t_hr_pmv(inputs: dict = None, model: str = "iso"):
         alt="Psychrometric chart",
         py=0,
     )
+def speed_temp_pmv(inputs: dict = None, model: str = "iso"):
+    results = []
+    pmv_limits = [-0.5, 0.5]
+    clo_d = clo_dynamic(
+        clo=inputs[ElementsIDs.clo_input.value], met=inputs[ElementsIDs.met_input.value]
+    )
+
+    for pmv_limit in pmv_limits:
+        for vr in np.arange(0.1, 1.3, 0.1):
+            def function(x):
+                return (
+                        pmv(
+                            x,
+                            tr=inputs[ElementsIDs.t_r_input.value],
+                            vr=vr,
+                            rh=inputs[ElementsIDs.rh_input.value],
+                            met=inputs[ElementsIDs.met_input.value],
+                            clo=clo_d,
+                            wme=0,
+                            standard=model,
+                            limit_inputs=False,
+                        )
+                        - pmv_limit
+                )
+
+            temp = optimize.brentq(function, 10, 40)
+            results.append(
+                {
+                    "vr": vr,
+                    "temp": temp,
+                    "pmv_limit": pmv_limit,
+                }
+            )
+
+
+
