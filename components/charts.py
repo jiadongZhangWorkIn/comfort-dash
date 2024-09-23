@@ -1,7 +1,6 @@
 import base64
 import io
 from copy import deepcopy
-
 import dash_mantine_components as dmc
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,7 +9,7 @@ from pythermalcomfort.models import pmv, adaptive_ashrae
 from pythermalcomfort.utilities import v_relative, clo_dynamic
 from pythermalcomfort.psychrometrics import psy_ta_rh
 from scipy import optimize
-
+import math
 from components.drop_down_inline import generate_dropdown_inline
 from utils.my_config_file import ElementsIDs, Models, UnitSystem, UnitConverter
 from utils.website_text import TextHome
@@ -79,7 +78,6 @@ def t_rh_pmv(inputs: dict = None, model: str = "iso"):
             )
 
     df = pd.DataFrame(results)
-
     f, axs = plt.subplots(1, 1, figsize=(6, 4), sharex=True)
     t1 = df[df["pmv_limit"] == pmv_limits[0]]
     t2 = df[df["pmv_limit"] == pmv_limits[1]]
@@ -304,7 +302,6 @@ def pmot_ot_adaptive_ashrae(inputs: dict = None, model: str = "ashrae"):
 
     # Convert the result to a DataFrame
     df = pd.DataFrame(results)
-
     # Create a Plotly graphics object
     fig = go.Figure()
 
@@ -554,3 +551,141 @@ def speed_temp_pmv(inputs: dict = None, model: str = "ashrae"):
                     "pmv_limit": pmv_limit,
                 }
             )
+
+
+def get_heat_losses(inputs: dict = None, model: str = "ashrae"):
+    tr = inputs[ElementsIDs.t_r_input.value]
+    print(tr)
+    met = inputs[ElementsIDs.met_input.value]
+    print(met)
+    vel = v_relative(
+        v=inputs[ElementsIDs.v_input.value], met=inputs[ElementsIDs.met_input.value]
+    )
+    print(vel)
+    clo_d = clo_dynamic(
+        clo=inputs[ElementsIDs.clo_input.value], met=inputs[ElementsIDs.met_input.value]
+    )
+    print(clo_d)
+    rh = inputs[ElementsIDs.rh_input.value]
+
+    ta_range = np.arange(10, 41)
+    results = {
+        "h1": [],  # Water vapor diffusion through the skin
+        "h2": [],  # Evaporation of sweat
+        "h3": [],  # Respiration latent
+        "h4": [],  # Respiration sensible
+        "h5": [],  # Radiation from clothing surface
+        "h6": [],  # Convection from clothing surface
+        "h7": [],  # Total latent heat loss
+        "h8": [],  # Total sensible heat loss
+        "h9": [],  # Total heat loss
+        "h10": [],  # Metabolic rate
+    }
+
+    for ta in ta_range:
+        heat_losses = pmv_origin(
+            ta=ta, tr=tr, vel=vel, rh=rh, met=met, clo=clo_d, wme=0
+        )
+        print(heat_losses)
+        results["h1"].append(round(heat_losses["hl1"], 1))
+        results["h2"].append(round(heat_losses["hl2"], 1))
+        results["h3"].append(round(heat_losses["hl3"], 1))
+        results["h4"].append(round(heat_losses["hl4"], 1))
+        results["h5"].append(round(heat_losses["hl5"], 1))
+        results["h6"].append(round(heat_losses["hl6"], 1))
+        results["h7"].append(
+            round(heat_losses["hl1"] + heat_losses["hl2"] + heat_losses["hl3"], 1)
+        )
+        results["h8"].append(
+            round(heat_losses["hl4"] + heat_losses["hl5"] + heat_losses["hl6"], 1)
+        )
+        results["h9"].append(
+            round(
+                heat_losses["hl1"]
+                + heat_losses["hl2"]
+                + heat_losses["hl3"]
+                + heat_losses["hl4"]
+                + heat_losses["hl5"]
+                + heat_losses["hl6"],
+                1,
+            )
+        )
+        results["h10"].append(round(met * 58.15, 1))
+    df = pd.DataFrame(results)
+    print(df)
+    static_image_data = """
+    iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/wcAAwAB
+    /aEEBkAAAAAASUVORK5CYII=
+    """
+
+    return dmc.Image(
+        src=f"data:image/png;base64,{static_image_data}",
+        alt="Static Image",
+        py=0,
+    )
+
+
+def pmv_origin(ta, tr, vel, rh, met, clo, wme=0):
+
+    pa = rh * 10 * math.exp(16.6536 - 4030.183 / (ta + 235))
+    icl = 0.155 * clo
+    m = met * 58.15
+    w = wme * 58.15
+    mw = m - w
+
+    if icl <= 0.078:
+        fcl = 1 + 1.29 * icl
+    else:
+        fcl = 1.05 + 0.645 * icl
+
+    hcf = 12.1 * math.sqrt(vel)
+    taa = ta + 273
+    tra = tr + 273
+
+    t_cla = taa + (35.5 - ta) / (3.5 * icl + 0.1)
+
+    p1 = icl * fcl
+    p2 = p1 * 3.96
+    p3 = p1 * 100
+    p4 = p1 * taa
+    p5 = 308.7 - 0.028 * mw + p2 * math.pow(tra / 100, 4)
+    xn = t_cla / 100
+    xf = t_cla / 50
+    eps = 0.00015
+
+    n = 0
+    while abs(xn - xf) > eps:
+        xf = (xf + xn) / 2
+        hcn = 2.38 * math.pow(abs(100.0 * xf - taa), 0.25)
+        hc = hcf if hcf > hcn else hcn
+        xn = (p5 + p4 * hc - p2 * math.pow(xf, 4)) / (100 + p3 * hc)
+        n += 1
+        if n > 150:
+            raise ValueError("Max iterations exceeded")
+
+    tcl = 100 * xn - 273
+
+    hl1 = 3.05 * 0.001 * (5733 - 6.99 * mw - pa)
+    hl2 = 0.42 * (mw - 58.15) if mw > 58.15 else 0
+    hl3 = 1.7 * 0.00001 * m * (5867 - pa)
+    hl4 = 0.0014 * m * (34 - ta)
+    hl5 = 3.96 * fcl * (math.pow(xn, 4) - math.pow(tra / 100, 4))
+    hl6 = fcl * hc * (tcl - ta)
+
+    ts = 0.303 * math.exp(-0.036 * m) + 0.028
+    pmv = ts * (mw - hl1 - hl2 - hl3 - hl4 - hl5 - hl6)
+
+    ppd = 100.0 - 95.0 * math.exp(
+        -0.03353 * math.pow(pmv, 4.0) - 0.2179 * math.pow(pmv, 2.0)
+    )
+
+    return {
+        "pmv": pmv,
+        "ppd": ppd,
+        "hl1": hl1,
+        "hl2": hl2,
+        "hl3": hl3,
+        "hl4": hl4,
+        "hl5": hl5,
+        "hl6": hl6,
+    }
