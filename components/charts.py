@@ -564,3 +564,295 @@ def speed_temp_pmv(inputs: dict = None, model: str = "iso"):
                     "pmv_limit": pmv_limit,
                 }
             )
+
+
+def SET_outputs_chart(
+    inputs: dict = None, calculate_ce: bool = False, p_atmospheric: int = 101325
+):
+    # Dry-bulb air temperature (x-axis)
+    tdb_values = np.arange(10, 40, 0.5, dtype=float).tolist()
+
+    # Prepare arrays for the outputs we want to plot
+    set_temp = []  # set_tmp()
+    skin_temp = []  # t_skin
+    core_temp = []  # t_core
+    clothing_temp = []  # t_cl
+    mean_body_temp = []  # t_body
+    total_skin_evaporative_heat_loss = []  # e_skin
+    sweat_evaporation_skin_heat_loss = []  # e_rsw
+    vapour_diffusion_skin_heat_loss = []  # e_diff
+    total_skin_senesible_heat_loss = []  # q_sensible
+    total_skin_heat_loss = []  # q_skin
+    heat_loss_respiration = []  # q_res
+    skin_wettedness = []  # w
+
+    # Extract common input values
+    tr = float(inputs[ElementsIDs.t_r_input.value])
+    vr = float(
+        v_relative(  # Ensure vr is scalar
+            v=inputs[ElementsIDs.v_input.value], met=inputs[ElementsIDs.met_input.value]
+        )
+    )
+    rh = float(inputs[ElementsIDs.rh_input.value])  # Ensure rh is scalar
+    met = float(inputs[ElementsIDs.met_input.value])  # Ensure met is scalar
+    clo = float(
+        clo_dynamic(  # Ensure clo is scalar
+            clo=inputs[ElementsIDs.clo_input.value], met=met
+        )
+    )
+
+    # Iterate through each temperature value and call set_tmp
+    for tdb in tdb_values:
+        set = set_tmp(
+            tdb=tdb,
+            tr=tr,
+            v=vr,
+            rh=rh,
+            met=met,
+            clo=clo,
+            wme=0,
+            limit_inputs=False,
+        )
+        set_temp.append(float(set))  # Convert np.float64 to float
+
+    # Iterate through each temperature value and call `two_nodes`
+    for tdb in tdb_values:
+        results = two_nodes(
+            tdb=tdb,
+            tr=tr,
+            v=vr,
+            rh=rh,
+            met=met,
+            clo=clo,
+            wme=0,
+        )
+        # Collect relevant data for each variable, converting to float
+        skin_temp.append(float(results["t_skin"]))  # Convert np.float64 to float
+        core_temp.append(float(results["t_core"]))  # Convert np.float64 to float
+        total_skin_evaporative_heat_loss.append(
+            float(results["e_skin"])
+        )  # Convert np.float64 to float
+        sweat_evaporation_skin_heat_loss.append(
+            float(results["e_rsw"])
+        )  # Convert np.float64 to float
+        vapour_diffusion_skin_heat_loss.append(
+            float(results["e_skin"] - results["e_rsw"])
+        )  # Convert np.float64 to float
+        total_skin_senesible_heat_loss.append(
+            float(results["q_sensible"])
+        )  # Convert np.float64 to float
+        total_skin_heat_loss.append(
+            float(results["q_skin"])
+        )  # Convert np.float64 to float
+        heat_loss_respiration.append(
+            float(results["q_res"])
+        )  # Convert np.float64 to float
+        skin_wettedness.append(
+            float(results["w"]) * 100
+        )  # Convert to percentage and float
+
+        # calculate clothing temperature t_cl
+        pressure_in_atmospheres = float(p_atmospheric / 101325)
+        r_clo = 0.155 * clo
+        f_a_cl = 1.0 + 0.15 * clo
+        h_cc = 3.0 * pow(pressure_in_atmospheres, 0.53)
+        h_fc = 8.600001 * pow((vr * pressure_in_atmospheres), 0.53)
+        h_cc = max(h_cc, h_fc)
+        if not calculate_ce and met > 0.85:
+            h_c_met = 5.66 * (met - 0.85) ** 0.39
+            h_cc = max(h_cc, h_c_met)
+        h_r = 4.7
+        h_t = h_r + h_cc
+        r_a = 1.0 / (f_a_cl * h_t)
+        t_op = (h_r * tr + h_cc * tdb) / h_t
+        clothing_temp.append(
+            float((r_a * results["t_skin"] + r_clo * t_op) / (r_a + r_clo))
+        )
+        # calculate mean body temperature t_body
+        alfa = 0.1
+        mean_body_temp.append(
+            float(alfa * results["t_skin"] + (1 - alfa) * results["t_core"])
+        )
+    # df = pd.DataFrame(results)
+    fig = go.Figure()
+    # fig.add_trace(go.Scatter(
+    #     x=tdb_values,
+    #     y=set_temp,
+    #     mode='lines',
+    #     name='SET temperature',
+    #     line=dict(color='blue')
+    # ))
+
+    # Added SET temperature curve
+    fig.add_trace(
+        go.Scatter(
+            x=tdb_values,
+            y=set_temp,
+            mode="lines",
+            name="SET temperature",
+            line=dict(color="blue"),
+            yaxis="y1",  # Use a  y-axis
+        )
+    )
+
+    # Adding skin temperature curve
+    fig.add_trace(
+        go.Scatter(
+            x=tdb_values,
+            y=skin_temp,
+            mode="lines",
+            name="Skin temperature",
+            line=dict(color="cyan"),
+        )
+    )
+
+    # Added core temperature curve
+    fig.add_trace(
+        go.Scatter(
+            x=tdb_values,
+            y=core_temp,
+            mode="lines",
+            name="core temperature",
+            line=dict(color="limegreen"),
+            yaxis="y1",  # Use a second y-axis
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=tdb_values,
+            y=clothing_temp,
+            mode="lines",
+            name="clothing temperature",
+            line=dict(color="lightgreen"),
+            yaxis="y1",  # Use a second y-axis
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=tdb_values,
+            y=mean_body_temp,
+            mode="lines",
+            name="mean body temperature",
+            line=dict(color="green"),
+            yaxis="y1",  # Use a second y-axis
+        )
+    )
+    # total skin evaporative heat loss
+    fig.add_trace(
+        go.Scatter(
+            x=tdb_values,
+            y=total_skin_evaporative_heat_loss,
+            mode="lines",
+            name="total skin evaporative heat loss",
+            line=dict(color="lightgrey"),
+            yaxis="y2",  # Use a second y-axis
+        )
+    )
+    # sweat evaporation skin heat loss
+    fig.add_trace(
+        go.Scatter(
+            x=tdb_values,
+            y=sweat_evaporation_skin_heat_loss,
+            mode="lines",
+            name="sweat evaporation skin heat loss ",
+            line=dict(color="orange"),
+            yaxis="y2",  # Use a second y-axis
+        )
+    )
+
+    # vapour diffusion skin heat loss
+    fig.add_trace(
+        go.Scatter(
+            x=tdb_values,
+            y=vapour_diffusion_skin_heat_loss,
+            mode="lines",
+            name="vapour diffusion skin heat loss ",
+            line=dict(color="darkorange"),
+            yaxis="y2",  # Use a second y-axis
+        )
+    )
+
+    # total skin sensible heat loss
+    fig.add_trace(
+        go.Scatter(
+            x=tdb_values,
+            y=total_skin_heat_loss,
+            mode="lines",
+            name="total skin sensible heat loss ",
+            line=dict(color="darkgrey"),
+            yaxis="y2",  # Use a second y-axis
+        )
+    )
+
+    # Added  total skin heat loss curve
+    fig.add_trace(
+        go.Scatter(
+            x=tdb_values,
+            y=total_skin_heat_loss,
+            mode="lines",
+            name="Total skin heat loss",
+            line=dict(color="black"),
+            yaxis="y2",  # Use a second y-axis
+        )
+    )
+
+    #  heat loss respiration curve
+    fig.add_trace(
+        go.Scatter(
+            x=tdb_values,
+            y=heat_loss_respiration,
+            mode="lines",
+            name="heat loss respiration",
+            line=dict(color="black", dash="dash"),
+            yaxis="y2",  # Use a second y-axis
+        )
+    )
+
+    # Added skin moisture curve
+    fig.add_trace(
+        go.Scatter(
+            x=tdb_values,
+            y=skin_wettedness,
+            mode="lines",
+            name="Skin wettedness",
+            line=dict(color="yellow", dash="dash"),
+            yaxis="y1",  # Use a second y-axis
+        )
+    )
+
+    # Set the layout of the chart and adjust the legend position
+    fig.update_layout(
+        title="Temperature and Heat Loss",
+        xaxis=dict(
+            title="Dry-bulb Air Temperature [°C]",
+            showgrid=False,
+            range=[10, 40],
+            dtick=2,
+        ),
+        yaxis=dict(title="Temperature [°C]", showgrid=False, range=[18, 38], dtick=2),
+        yaxis2=dict(
+            title="Heat Loss [W] / Skin Wettedness [%]",
+            showgrid=False,
+            overlaying="y",
+            side="right",
+            range=[0, 70],
+            # title_standoff=50  # Increase the distance between the Y axis title and the chart
+        ),
+        legend=dict(
+            x=0.5,  # Adjust the horizontal position of the legend
+            y=-0.2,  # Move the legend below the chart
+            orientation="h",  # Display the legend horizontally
+            traceorder="normal",  # 按顺序显示
+            xanchor="center",
+            yanchor="top",
+        ),
+        template="plotly_white",
+        autosize=False,
+        width=700,  # 3:4
+        height=700,  # 3:4
+    )
+
+    # show
+    return fig
