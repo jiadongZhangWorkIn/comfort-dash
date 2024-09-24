@@ -555,17 +555,13 @@ def speed_temp_pmv(inputs: dict = None, model: str = "ashrae"):
 
 def get_heat_losses(inputs: dict = None, model: str = "ashrae"):
     tr = inputs[ElementsIDs.t_r_input.value]
-    print(tr)
     met = inputs[ElementsIDs.met_input.value]
-    print(met)
     vel = v_relative(
         v=inputs[ElementsIDs.v_input.value], met=inputs[ElementsIDs.met_input.value]
     )
-    print(vel)
     clo_d = clo_dynamic(
         clo=inputs[ElementsIDs.clo_input.value], met=inputs[ElementsIDs.met_input.value]
     )
-    print(clo_d)
     rh = inputs[ElementsIDs.rh_input.value]
 
     ta_range = np.arange(10, 41)
@@ -586,7 +582,7 @@ def get_heat_losses(inputs: dict = None, model: str = "ashrae"):
         heat_losses = pmv_origin(
             ta=ta, tr=tr, vel=vel, rh=rh, met=met, clo=clo_d, wme=0
         )
-        print(heat_losses)
+
         results["h1"].append(round(heat_losses["hl1"], 1))
         results["h2"].append(round(heat_losses["hl2"], 1))
         results["h3"].append(round(heat_losses["hl3"], 1))
@@ -612,17 +608,6 @@ def get_heat_losses(inputs: dict = None, model: str = "ashrae"):
         )
         results["h10"].append(round(met * 58.15, 1))
     df = pd.DataFrame(results)
-    print(df)
-    static_image_data = """
-    iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/wcAAwAB
-    /aEEBkAAAAAASUVORK5CYII=
-    """
-
-    return dmc.Image(
-        src=f"data:image/png;base64,{static_image_data}",
-        alt="Static Image",
-        py=0,
-    )
 
 
 def pmv_origin(ta, tr, vel, rh, met, clo, wme=0):
