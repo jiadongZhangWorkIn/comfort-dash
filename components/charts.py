@@ -564,6 +564,72 @@ def speed_temp_pmv(inputs: dict = None, model: str = "iso"):
                     "pmv_limit": pmv_limit,
                 }
             )
+    df = pd.DataFrame(results)
+    fig = go.Figure()
+
+    # Define trace1
+    fig.add_trace(
+        go.Scatter(
+            x=df[df["pmv_limit"] == pmv_limits[0]]["temp"],
+            y=df[df["pmv_limit"] == pmv_limits[0]]["vr"],
+            mode="lines",
+            # fill='tozerox',
+            # fillcolor='rgba(123, 208, 242, 0.5)',
+            name=f"PMV {pmv_limits[0]}",
+            showlegend=False,
+            line=dict(color="rgba(0,0,0,0)"),
+        )
+    )
+
+    # Define trace2
+    fig.add_trace(
+        go.Scatter(
+            x=df[df["pmv_limit"] == pmv_limits[1]]["temp"],
+            y=df[df["pmv_limit"] == pmv_limits[1]]["vr"],
+            mode="lines",
+            fill="tonextx",
+            fillcolor="rgba(123, 208, 242, 0.5)",
+            name=f"PMV {pmv_limits[1]}",
+            showlegend=False,
+            line=dict(color="rgba(0,0,0,0)"),
+        )
+    )
+
+    # Define input point
+    fig.add_trace(
+        go.Scatter(
+            x=[inputs[ElementsIDs.t_db_input.value]],
+            y=[inputs[ElementsIDs.v_input.value]],
+            mode="markers",
+            marker=dict(color="red"),
+            name="Input",
+            showlegend=False,
+        )
+    )
+
+    fig.update_layout(
+        xaxis_title="Operative Temperature [°C]",  # 设置X轴标题
+        yaxis_title="Relative Air Speed [m/s]",  # 设置Y轴标题
+        template="plotly_white",
+        width=700,
+        height=525,
+        xaxis=dict(
+            range=[20, 34],  # 设置X轴范围
+            tickmode="linear",
+            tick0=20,
+            dtick=2,
+            gridcolor="lightgrey",
+        ),
+        yaxis=dict(
+            range=[0.0, 1.2],  # 设置y轴范围
+            tickmode="linear",
+            tick0=0.0,
+            dtick=0.1,
+            gridcolor="lightgrey",
+        ),
+    )
+    # Return the figure
+    return fig
 
 
 def SET_outputs_chart(
