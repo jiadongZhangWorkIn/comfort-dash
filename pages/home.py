@@ -9,6 +9,7 @@ from components.charts import (
     pmv_en_psy_chart,
     SET_outputs_chart,
     speed_temp_pmv,
+    get_heat_losses,
 )
 from components.dropdowns import (
     model_selection,
@@ -291,8 +292,11 @@ def update_chart(inputs: dict, function_selection: str):
         image = SET_outputs_chart(
             inputs=inputs, calculate_ce=calculate_ce, p_atmospheric=p_atmospheric
         )
+    elif chart_selected == Charts.thl_psychrometric.value.name:
+        image = get_heat_losses(inputs=inputs, model="iso")
     if chart_selected == Charts.wind_temp_chart.value.name:
         image = speed_temp_pmv(inputs=inputs, model="iso")
+
     note = ""
     chart: ChartsInfo
     for chart in Models[selected_model].value.charts:
