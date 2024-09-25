@@ -32,7 +32,9 @@ def extract_float(value):
     return None
 
 
-def get_inputs(selected_model: str, form_content: dict, units: str):
+def get_inputs(
+    selected_model: str, form_content: dict, units: str, functionality_selection
+):
     if selected_model is None:
         return no_update
 
