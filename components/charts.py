@@ -1206,3 +1206,164 @@ def pmv_origin(ta, tr, vel, rh, met, clo, wme=0):
         "hl5": hl5,
         "hl6": hl6,
     }
+
+
+def t_rh_pmv_category(
+    inputs: dict = None,
+    model: str = "iso",
+    function_selection: str = Functionalities.Default,
+):
+    results = []
+    # Specifies the category of the PMV interval
+    pmv_limits = [-0.7, -0.5, -0.2, 0.2, 0.5, 0.7]
+    colors = [
+        "rgba(168,204,162,0.9)",  # Light green
+        "rgba(114,174,106,0.9)",  # Medium green
+        "rgba(78,156,71,0.9)",  # Dark green
+        "rgba(114,174,106,0.9)",  # Medium green
+        "rgba(168,204,162,0.9)",  # Light green
+    ]
+    clo_d = clo_dynamic(
+        clo=inputs[ElementsIDs.clo_input.value], met=inputs[ElementsIDs.met_input.value]
+    )
+    vr = v_relative(
+        v=inputs[ElementsIDs.v_input.value], met=inputs[ElementsIDs.met_input.value]
+    )
+    for i in range(len(pmv_limits) - 1):
+        lower_limit = pmv_limits[i]
+        upper_limit = pmv_limits[i + 1]
+        color = colors[i]  # Corresponding color
+
+        for rh in np.arange(0, 110, 10):
+            # Find the upper and lower limits of temperature
+            def function(x):
+                return (
+                    pmv(
+                        x,
+                        tr=inputs[ElementsIDs.t_r_input.value],
+                        vr=vr,
+                        rh=rh,
+                        met=inputs[ElementsIDs.met_input.value],
+                        clo=clo_d,
+                        wme=0,
+                        standard=model,
+                        limit_inputs=False,
+                    )
+                    - lower_limit
+                )
+
+            temp_lower = optimize.brentq(function, 10, 40)
+
+            def function_upper(x):
+                return (
+                    pmv(
+                        x,
+                        tr=inputs[ElementsIDs.t_r_input.value],
+                        vr=vr,
+                        rh=rh,
+                        met=inputs[ElementsIDs.met_input.value],
+                        clo=clo_d,
+                        wme=0,
+                        standard=model,
+                        limit_inputs=False,
+                    )
+                    - upper_limit
+                )
+
+            temp_upper = optimize.brentq(function_upper, 10, 40)
+            # Record RH and temperature upper and lower limits for each interval
+            results.append(
+                {
+                    "rh": rh,
+                    "temp_lower": temp_lower,
+                    "temp_upper": temp_upper,
+                    "pmv_lower_limit": lower_limit,
+                    "pmv_upper_limit": upper_limit,
+                    "color": color,  # Use the specified color
+                }
+            )
+    df = pd.DataFrame(results)
+
+    if df.empty:
+        print("No data available for plotting.")
+    # Visualization: Create a chart with multiple fill areas
+    fig = go.Figure()
+    for i in range(len(pmv_limits) - 1):
+        region_data = df[
+            (df["pmv_lower_limit"] == pmv_limits[i])
+            & (df["pmv_upper_limit"] == pmv_limits[i + 1])
+        ]
+        # Draw the temperature line at the bottom
+        fig.add_trace(
+            go.Scatter(
+                x=region_data["temp_lower"],
+                y=region_data["rh"],
+                fill=None,
+                mode="lines",
+                line=dict(color="rgba(255,255,255,0)"),
+            )
+        )
+        # Draw the temperature line at the top and fill in the color
+        if colors[i]:
+            fig.add_trace(
+                go.Scatter(
+                    x=region_data["temp_upper"],
+                    y=region_data["rh"],
+                    fill="tonexty",
+                    fillcolor=colors[i],  # Use defined colors
+                    mode="lines",
+                    line=dict(color="rgba(255,255,255,0)"),
+                    showlegend=False,
+                )
+            )
+    # Add red dots to indicate the current input temperature and humidity
+    fig.add_trace(
+        go.Scatter(
+            x=[inputs[ElementsIDs.t_db_input.value]],
+            y=[inputs[ElementsIDs.rh_input.value]],
+            mode="markers",
+            marker=dict(color="red", size=12),
+            name="Current Condition",
+        )
+    )
+
+    annotation_text = (
+        f"t<sub>db</sub>   {inputs[ElementsIDs.t_db_input.value]:.1f} °C<br>"
+    )
+
+    fig.add_annotation(
+        x=32,
+        y=96,
+        xref="x",
+        yref="y",
+        text=annotation_text,
+        showarrow=False,
+        align="left",
+        bgcolor="rgba(0,0,0,0)",
+        bordercolor="rgba(0,0,0,0)",
+        font=dict(size=14),
+    )
+
+    # Update layout
+    fig.update_layout(
+        xaxis_title="Temperature (°C)",
+        yaxis_title="Relative Humidity (%)",
+        showlegend=False,
+        template="simple_white",
+        xaxis=dict(
+            range=[10, 40],
+            showgrid=True,
+            gridcolor="lightgray",
+            gridwidth=1,
+            dtick=2,  # Set the horizontal scale interval to 2
+        ),
+        yaxis=dict(
+            range=[0, 100],
+            showgrid=True,
+            gridcolor="lightgray",
+            gridwidth=1,
+            dtick=10,  # Set the ordinate scale interval to 10
+        ),
+    )
+    # return dcc.Graph(figure=fig)
+    return fig

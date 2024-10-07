@@ -97,13 +97,27 @@ def display_results(inputs: dict):
             results[1].children.append(
                 dmc.Center(dmc.Text(f"Sensation: {comfort_category}"))
             )
-        elif selected_model == Models.PMV_EN.name:
+        # elif selected_model == Models.PMV_EN.name:
+        #     comfort_category = mapping(
+        #         abs(r_pmv["pmv"]), {0.2: "I", 0.5: "II", 0.7: "III", float("inf"): "IV"}
+        #     )
+        #     results[1].children.append(
+        #         dmc.Center(dmc.Text(f"Category: {comfort_category}"))
+        #     )
+        if selected_model == Models.PMV_EN.name:
             comfort_category = mapping(
-                abs(r_pmv["pmv"]), {0.2: "I", 0.5: "II", 0.7: "III", float("inf"): "IV"}
+                r_pmv["pmv"],
+                {
+                    -0.7: "Ⅳ",
+                    -0.5: "Ⅲ",
+                    -0.2: "Ⅱ",
+                    0.2: "Ⅰ",
+                    0.5: "Ⅱ",
+                    0.7: "Ⅲ",
+                    2: "Ⅳ",
+                },
             )
-            results[1].children.append(
-                dmc.Center(dmc.Text(f"Category: {comfort_category}"))
-            )
+            results.append(dmc.Center(dmc.Text(f"Category: {comfort_category}")))
 
         # todo add unit detect if IP inputs and conver into SI calculation
         if (
