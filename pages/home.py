@@ -10,6 +10,7 @@ from components.charts import (
     SET_outputs_chart,
     speed_temp_pmv,
     get_heat_losses,
+    t_rh_pmv_category,
 )
 from components.dropdowns import (
     model_selection,
@@ -260,7 +261,7 @@ def update_chart(inputs: dict, function_selection: str):
     calculate_ce = False
     if chart_selected == Charts.t_rh.value.name:
         if selected_model == Models.PMV_EN.name:
-            image = t_rh_pmv(
+            image = t_rh_pmv_category(
                 inputs=inputs, model="iso", function_selection=function_selection
             )
         elif selected_model == Models.PMV_ashrae.name:

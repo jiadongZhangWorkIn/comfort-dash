@@ -449,6 +449,8 @@ class Models(Enum):
             # todo add the right charts
             Charts.psychrometric.value,
             Charts.psychrometric_operative.value,
+            Charts.t_rh.value,
+
         ],
         inputs=[
             ModelInputsInfo(
