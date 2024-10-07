@@ -1207,7 +1207,12 @@ def pmv_origin(ta, tr, vel, rh, met, clo, wme=0):
         "hl6": hl6,
     }
 
-def t_rh_pmv_category(inputs: dict = None, model: str = "iso", function_selection: str = Functionalities.Default):
+
+def t_rh_pmv_category(
+    inputs: dict = None,
+    model: str = "iso",
+    function_selection: str = Functionalities.Default,
+):
     results = []
     # Specifies the category of the PMV interval
     pmv_limits = [-0.7, -0.5, -0.2, 0.2, 0.5, 0.7]

@@ -450,7 +450,6 @@ class Models(Enum):
             Charts.psychrometric.value,
             Charts.psychrometric_operative.value,
             Charts.t_rh.value,
-
         ],
         inputs=[
             ModelInputsInfo(
